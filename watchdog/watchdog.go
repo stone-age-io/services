@@ -298,14 +298,19 @@ func (w *Watchdog) tick(ctx context.Context) {
 		w.m.transitions.WithLabelValues(t.Check, string(t.State)).Inc()
 		w.log.Info("state change", "check", t.Check, "target", t.Target, "state", t.State, "last_seen", t.LastSeen)
 	}
-	for _, t := range dirty {
+	// Stop at the first failed write. A failure here means JetStream is down
+	// or stalled, so the rest would likely fail too, each after its own
+	// timeout, while mu blocks readiness and the watchers. Every unwritten
+	// target stays dirty and is retried on the next tick.
+	for i, t := range dirty {
 		wctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		err := putState(wctx, w.stateKV, t)
 		cancel()
 		if err != nil {
 			w.m.writeErrors.Inc()
-			w.log.Warn("state write failed; retrying next tick", "check", t.Check, "target", t.Target, "error", err)
-			continue
+			w.log.Warn("state write failed; retrying next tick", "check", t.Check, "target", t.Target,
+				"unwritten", len(dirty)-i, "error", err)
+			break
 		}
 		w.tr.Written(t)
 	}

@@ -277,7 +277,7 @@ The watchdog is built so that its own problems never look like target failures.
 - **After a NATS server restart,** the KV watchers take about 15–20 seconds to resubscribe, while nats.go detects the missed heartbeats. A check changed in that window takes effect late but is never lost. Target tracking isn't affected.
 - **A check deleted while the watchdog was down** has its state purged when the watchdog starts.
 - **Time** comes from the watchdog's own clock when a message arrives, never from the payload, so a device with a wrong clock can't affect it.
-- **Failed state writes** are retried on every tick until they succeed. Each failure is counted in `watchdog_state_write_errors_total`.
+- **Failed state writes** are retried on every tick until they succeed. A tick stops writing at its first failure, so a stalled JetStream costs one write timeout (5s) per tick, not one per target. Each failure is counted in `watchdog_state_write_errors_total`.
 
 ---
 

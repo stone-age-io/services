@@ -20,6 +20,11 @@ func Connect(url, creds, name string, log *slog.Logger, h Hooks) (*nats.Conn, er
 	opts := []nats.Option{
 		nats.Name(name),
 		nats.MaxReconnects(-1),
+		// By default nats.go stops reconnecting after the same auth error
+		// twice. After a Revoke, creds-keeper writes the new creds file
+		// within one sync interval, and nats.UserCredentials reads the file
+		// again on every connect. So keep trying (ADR 0007 §4).
+		nats.IgnoreAuthErrorAbort(),
 		nats.DisconnectErrHandler(func(_ *nats.Conn, err error) {
 			log.Warn("nats disconnected", "error", err)
 			if h.Disconnected != nil {

@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [watchdog]
+        service: [watchdog, creds-keeper]
     steps:
       - uses: actions/checkout@v7
 

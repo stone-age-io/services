@@ -5,10 +5,13 @@ Small, account-scoped NATS services for the [Stone-Age.io](https://stone-age.io)
 | Service | What it does |
 |---|---|
 | [Watchdog](docs/watchdog.md) | Reports when targets stop sending messages. |
+| [creds-keeper](docs/creds-keeper.md) | Keeps a service's creds file current from the platform, so Regenerate and Revoke reach it. |
 
 ---
 
 ## What every service here has in common
+
+creds-keeper is the one exception to this list. It talks only HTTPS to the platform, with a Thing's login, and never NATS ([ADR 0007](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0007-creds-keeper.md) §7). It shares the health contract, the configuration rule and the image.
 
 - **Account-scoped.** It connects with one account user's **creds file** and never needs a platform credential.
 - **Environment variables only.** There are no config files.
@@ -26,6 +29,8 @@ Simple and easy to maintain beats clever. A service belongs here only if:
 2. rule-router, Benthos or NATS itself doesn't already do the job;
 3. it's useful to any tenant, not one project;
 4. it runs inside a tenant's account with a user creds file.
+
+creds-keeper is admitted on different grounds: it is what lets the services above get their creds file from the platform.
 
 ## Releases
 

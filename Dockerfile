@@ -32,8 +32,14 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # The floating alpine:3 tag picks up base security fixes without anyone
 # watching Alpine releases.
 FROM alpine:3
+# The uid and gid are fixed, so a creds-keeper and the service it serves can
+# share a creds file across containers. /creds and /session belong to the
+# service user, so an empty named volume mounted there is writable by it.
 RUN apk add --no-cache ca-certificates tzdata \
-    && adduser -D -H -u 10001 service
+    && addgroup -g 10001 service \
+    && adduser -D -H -u 10001 -G service service \
+    && mkdir /creds /session \
+    && chown service:service /creds /session
 COPY --from=build /out/service /service
 USER service
 

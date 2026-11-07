@@ -43,10 +43,17 @@ func newEnvFor(t *testing.T, s *server.Server) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return newEnvConn(t, nc)
+}
+
+// newEnvConn binds the buckets over nc, creating them if needed, and closes
+// nc when the test ends.
+func newEnvConn(t *testing.T, nc *nats.Conn) *env {
 	t.Cleanup(nc.Close)
 	js, _ := jetstream.New(nc)
 	ctx := context.Background()
 	e := &env{t: t, nc: nc}
+	var err error
 	if e.checksKV, err = Bucket(ctx, js, "watchdog_checks", ""); err != nil {
 		t.Fatal(err)
 	}

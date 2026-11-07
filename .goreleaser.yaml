@@ -1,0 +1,66 @@
+# One tag releases every service in the repository: v1.2.3 builds a binary
+# archive per service and the release workflow pushes an image per service.
+# One version for the repo keeps tagging, changelogs and the shared internal/
+# packages simple. Per-service versions can come later if a service ever needs
+# to release on its own schedule.
+#
+# To add a service: copy the watchdog entries under builds and archives, and
+# add the service to the image matrix in .github/workflows/release.yml.
+version: 2
+
+project_name: services
+
+builds:
+  - id: watchdog
+    main: ./cmd/watchdog
+    binary: watchdog
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      # The version is also the micro service version, which must be SemVer.
+      - -s -w -X main.version={{.Version}}
+    # Services run on Linux servers and edge boxes. Nothing documents or tests
+    # them anywhere else.
+    goos: [linux]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: watchdog
+    ids: [watchdog]
+    formats: [tar.gz]
+    files:
+      - LICENSE
+      - README.md
+      - docs/watchdog.md
+    name_template: >-
+      watchdog_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+
+release:
+  github:
+    owner: stone-age-io
+    name: services
+  header: |
+    ## services {{ .Tag }}
+
+    Small, account-scoped NATS services for the Stone-Age.io platform. Each
+    service ships as a Linux binary archive below and as a container image:
+
+    - `ghcr.io/stone-age-io/watchdog:{{ .Tag }}`

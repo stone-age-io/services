@@ -1,0 +1,91 @@
+# Cuts a release when a v* tag is pushed: binary archives for every service via
+# goreleaser, then a container image per service to GHCR.
+#
+# The images are built from the repository's own Dockerfile rather than
+# goreleaser's docker support, so there is one definition of the image and it
+# is the one people can read and build locally.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the GitHub release
+  packages: write   # push to ghcr.io
+
+jobs:
+  binaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # goreleaser derives the version and the changelog from tags, and a
+          # shallow clone has neither.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test -race ./...
+
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          # Pinned to the v2 line so a goreleaser major can't arrive mid-release.
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  images:
+    needs: binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [watchdog]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # :latest is computed rather than listed, because a prerelease must not
+      # move it. A v0.2.0-rc1 that quietly became :latest would ship a release
+      # candidate to every deployment that doesn't pin.
+      - name: Compute image tags
+        id: tags
+        run: |
+          image=ghcr.io/stone-age-io/${{ matrix.service }}
+          tags="$image:$GITHUB_REF_NAME"
+          case "$GITHUB_REF_NAME" in
+            *-*) echo "prerelease tag, holding :latest at its current image" ;;
+            *)   tags="$tags,$image:latest" ;;
+          esac
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          # The binary's version must be SemVer for the micro service, so the
+          # leading v of the tag is dropped, as goreleaser does.
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "will push: $tags"
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            SERVICE=${{ matrix.service }}
+            VERSION=${{ steps.tags.outputs.version }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/stone-age-io/services
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

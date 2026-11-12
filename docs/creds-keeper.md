@@ -8,7 +8,7 @@ creds-keeper keeps one NATS creds file current for one Thing on the platform. Wi
 
 The process that uses the file does not change. It reads its creds path as before. creds-keeper works for our services, such as the [Watchdog](watchdog.md), and for other NATS clients, such as Telegraf and rule-router.
 
-The design and the alternatives it rejected are in [ADR 0007](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0007-creds-keeper.md).
+The design and the alternatives it rejected are in [ADR 0007](decisions/0007-creds-keeper.md).
 
 ---
 

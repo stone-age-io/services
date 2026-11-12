@@ -4,7 +4,7 @@ The watchdog reports when targets stop sending messages: a gateway goes quiet, a
 
 It subscribes to the subjects your checks name and records when it last saw each target. A ticker evaluates those times, and state changes are written to a KV bucket. The console reads that bucket, and rule-router turns its changes into notifications.
 
-The design and the alternatives it rejected are in [ADR 0005](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0005-watchdog-service.md).
+The design and the alternatives it rejected are in [ADR 0005](decisions/0005-watchdog-service.md).
 
 ---
 

@@ -11,7 +11,7 @@ Small, account-scoped NATS services for the [Stone-Age.io](https://stone-age.io)
 
 ## What every service here has in common
 
-creds-keeper is the one exception to this list. It talks only HTTPS to the platform, with a Thing's login, and never NATS ([ADR 0007](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0007-creds-keeper.md) §7). It shares the health contract, the configuration rule and the image.
+creds-keeper is the one exception to this list. It talks only HTTPS to the platform, with a Thing's login, and never NATS ([ADR 0007](docs/decisions/0007-creds-keeper.md) §7). It shares the health contract, the configuration rule and the image.
 
 - **Account-scoped.** It connects with one account user's **creds file** and never needs a platform credential.
 - **Environment variables only.** There are no config files.
@@ -31,6 +31,14 @@ Simple and easy to maintain beats clever. A service belongs here only if:
 4. it runs inside a tenant's account with a user creds file.
 
 creds-keeper is admitted on different grounds: it is what lets the services above get their creds file from the platform.
+
+## Decisions
+
+- [ADR 0005: A Watchdog Service for Message Absence](docs/decisions/0005-watchdog-service.md)
+- [ADR 0006: History Services for Metrics and Logs](docs/decisions/0006-history-services.md) (deferred, nothing built)
+- [ADR 0007: creds-keeper, Platform-Managed Credentials for Account Services](docs/decisions/0007-creds-keeper.md)
+
+The platform's own decisions (0001 to 0004) are in [platform-docs](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions.md). The numbers are shared, so a new one here takes the next free number across both.
 
 ## Releases
 

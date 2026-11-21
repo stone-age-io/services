@@ -14,6 +14,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/stone-age-io/kit/health"
 )
 
 const evalInterval = 20 * time.Millisecond
@@ -279,7 +281,13 @@ func TestReady(t *testing.T) {
 	e := newEnv(t)
 	w := e.start()
 	time.Sleep(3 * evalInterval)
-	for _, r := range w.Ready() {
+	var reg health.Registry
+	w.RegisterChecks(&reg)
+	rep := reg.Run(context.Background(), "", 0)
+	if len(rep.Checks) != 4 {
+		t.Fatalf("want 4 checks, got %+v", rep.Checks)
+	}
+	for _, r := range rep.Checks {
 		if r.State != "ok" {
 			t.Fatalf("want all ok, got %+v", r)
 		}

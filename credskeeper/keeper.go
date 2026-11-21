@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stone-age-io/services/internal/health"
+	"github.com/stone-age-io/kit/health"
 )
 
 // The platform's schema: a Thing authenticates against `things`, and its
@@ -253,37 +253,38 @@ func isRejected(err error) bool {
 	return errors.As(err, &he) && (he.status == http.StatusUnauthorized || he.status == http.StatusForbidden)
 }
 
-// Ready returns the readiness checks for /api/ready.
-func (k *Keeper) Ready() []health.Result {
-	var out []health.Result
+// RegisterChecks adds the readiness checks for /api/ready to reg.
+func (k *Keeper) RegisterChecks(reg *health.Registry) {
+	reg.Register("credentials", k.checkCredentials)
+	reg.Register("platform", k.checkPlatform)
+}
 
+func (k *Keeper) checkCredentials(context.Context) health.Result {
 	if fileExists(k.cfg.CredsFile) {
-		out = append(out, health.Result{Name: "credentials", State: health.OK, Detail: k.cfg.CredsFile})
-	} else {
-		out = append(out, health.Result{Name: "credentials", State: health.Fail,
-			Detail: "no creds file yet at " + k.cfg.CredsFile,
-			Fix:    "See the platform check for why the first sync has not succeeded"})
+		return health.OK(k.cfg.CredsFile)
 	}
+	return health.Fail("no creds file yet at "+k.cfg.CredsFile,
+		"See the platform check for why the first sync has not succeeded")
+}
 
+// checkPlatform never fails: the file on disk usually still works, and a
+// platform outage must not take services out of rotation.
+func (k *Keeper) checkPlatform(context.Context) health.Result {
 	k.mu.Lock()
 	last, lastErr := k.lastSync, k.lastErr
 	k.mu.Unlock()
 
-	// The platform check never fails: the file on disk usually still works,
-	// and a platform outage must not take services out of rotation.
-	p := health.Result{Name: "platform", State: health.OK}
 	switch {
 	case errors.Is(lastErr, ErrNeedPassword):
-		p.State, p.Detail = health.Warn, lastErr.Error()
-		p.Fix = "Set PLATFORM_PASSWORD for one start. If the Thing was deactivated and reactivated, an Owner or Admin sets a new password first."
+		return health.Warn(lastErr.Error(),
+			"Set PLATFORM_PASSWORD for one start. If the Thing was deactivated and reactivated, an Owner or Admin sets a new password first.")
 	case lastErr != nil:
-		p.State, p.Detail = health.Warn, "last sync failed: "+lastErr.Error()
+		return health.Warn("last sync failed: "+lastErr.Error(), "")
 	case last.IsZero():
-		p.State, p.Detail = health.Warn, "no sync has completed yet"
+		return health.Warn("no sync has completed yet", "")
 	case time.Since(last) > 3*k.cfg.SyncInterval:
-		p.State, p.Detail = health.Warn, fmt.Sprintf("last successful sync %s ago", time.Since(last).Round(time.Second))
+		return health.Warn(fmt.Sprintf("last successful sync %s ago", time.Since(last).Round(time.Second)), "")
 	default:
-		p.Detail = fmt.Sprintf("last sync %s ago", time.Since(last).Round(time.Second))
+		return health.OK(fmt.Sprintf("last sync %s ago", time.Since(last).Round(time.Second)))
 	}
-	return append(out, p)
 }

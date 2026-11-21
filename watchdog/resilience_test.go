@@ -13,7 +13,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/stone-age-io/services/internal/natsconn"
+	"github.com/stone-age-io/kit/natsx"
 )
 
 // newWatchdog returns a watchdog that has not been started, so a test can
@@ -47,9 +47,11 @@ func TestReconnectCausesNoFalseDowns(t *testing.T) {
 	e.putCheck("gw", `{"subject":"site.*.hb","target_token":1,"timeout":"100ms"}`)
 
 	w := newWatchdog(t, testWriter{t})
-	nc, err := natsconn.Connect(s.ClientURL(), "", "watchdog-test", w.log, natsconn.Hooks{
-		Disconnected: w.Pause,
-		Reconnected:  w.Resume,
+	nc, err := natsx.Connect(natsx.Options{
+		URLs:  []string{s.ClientURL()},
+		Name:  "watchdog-test",
+		Log:   w.log,
+		Hooks: natsx.Hooks{Disconnected: w.Pause, Reconnected: w.Resume},
 	})
 	if err != nil {
 		t.Fatal(err)

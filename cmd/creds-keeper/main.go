@@ -15,8 +15,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/stone-age-io/kit/health"
+
 	"github.com/stone-age-io/services/credskeeper"
-	"github.com/stone-age-io/services/internal/health"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -42,9 +43,11 @@ func run(log *slog.Logger) error {
 
 	k := credskeeper.New(cfg, log, credskeeper.NewMetrics(prometheus.DefaultRegisterer))
 
+	var reg health.Registry
+	k.RegisterChecks(&reg)
 	srv := &http.Server{
 		Addr:              httpAddr,
-		Handler:           health.Handler(version, time.Now(), k.Ready, prometheus.DefaultGatherer),
+		Handler:           httpHandler(&reg, os.Getenv("METRICS_TOKEN")),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() {
@@ -65,4 +68,17 @@ func run(log *slog.Logger) error {
 	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutCtx)
+}
+
+// httpHandler serves the process contract. The checks run on each request:
+// each only reads memory, so a cached prober would save nothing (ADR 0005,
+// As implemented, item 3).
+func httpHandler(reg *health.Registry, metricsToken string) http.Handler {
+	started := time.Now()
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/ready", func(w http.ResponseWriter, r *http.Request) {
+		health.WriteJSON(w, reg.Run(r.Context(), version, time.Since(started)))
+	})
+	mux.Handle("GET /metrics", health.MetricsHandler(prometheus.DefaultGatherer, metricsToken))
+	return mux
 }

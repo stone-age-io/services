@@ -15,11 +15,11 @@ creds-keeper is the one exception to this list. It talks only HTTPS to the platf
 
 - **Account-scoped.** It connects with one account user's **creds file** and never needs a platform credential.
 - **Environment variables only.** There are no config files.
-- **The platform's health contract.** `GET /api/ready` returns `200` or `503` with a JSON report, and `GET /metrics` serves Prometheus metrics. Neither needs a login.
+- **The platform's health contract.** `GET /api/ready` returns `200` or `503` with a JSON report, and `GET /metrics` serves Prometheus metrics. `/api/ready` never needs a login, and `/metrics` asks for a token only when `METRICS_TOKEN` is set.
 - **A NATS micro service.** `nats micro ls` finds it, and `$SRV.PING`, `$SRV.INFO` and `$SRV.STATS` work.
 - **One container image** per service, built from the shared `Dockerfile`.
 
-Shared code lives in `internal/`: `natsconn` (connect, creds, reconnect hooks) and `health` (`/api/ready` and `/metrics`). A service never keeps its own copy of either.
+Shared code comes from [`stone-age-io/kit`](https://github.com/stone-age-io/kit): `natsx` (connect, creds, reconnect hooks) and `health` (`/api/ready` and `/metrics`). A service never keeps its own copy of either.
 
 ## What belongs here
 

@@ -18,7 +18,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/stone-age-io/services/internal/health"
+	"github.com/stone-age-io/kit/health"
+	"github.com/stone-age-io/kit/natsx"
 )
 
 type Config struct {
@@ -340,26 +341,22 @@ func (w *Watchdog) checkCounts() (ok, invalid int) {
 	return ok, invalid
 }
 
-// Ready returns the readiness checks for /api/ready.
-func (w *Watchdog) Ready() []health.Result {
-	var out []health.Result
+// RegisterChecks adds the readiness checks for /api/ready to reg.
+func (w *Watchdog) RegisterChecks(reg *health.Registry) {
+	reg.Register("nats", natsx.Ready(func() *nats.Conn { return w.nc }))
+	reg.Register("buckets", w.checkBuckets)
+	reg.Register("checks", w.checkChecks)
+	reg.Register("evaluation", w.checkEvaluation)
+}
 
-	switch {
-	case w.nc == nil:
-		out = append(out, health.Result{Name: "nats", State: health.Fail, Detail: "not connected yet"})
-	case !w.nc.IsConnected():
-		out = append(out, health.Result{Name: "nats", State: health.Fail, Detail: "disconnected: " + w.nc.Status().String(),
-			Fix: "Check NATS_URL and that the server is reachable"})
-	default:
-		out = append(out, health.Result{Name: "nats", State: health.OK, Detail: "connected to " + w.nc.ConnectedUrlRedacted()})
-	}
-
+func (w *Watchdog) checkBuckets(context.Context) health.Result {
 	if w.bound.Load() {
-		out = append(out, health.Result{Name: "buckets", State: health.OK, Detail: w.cfg.ChecksBucket + ", " + w.cfg.StateBucket})
-	} else {
-		out = append(out, health.Result{Name: "buckets", State: health.Fail, Detail: "not bound yet"})
+		return health.OK(w.cfg.ChecksBucket + ", " + w.cfg.StateBucket)
 	}
+	return health.Fail("not bound yet", "")
+}
 
+func (w *Watchdog) checkChecks(context.Context) health.Result {
 	w.mu.Lock()
 	var bad []string
 	for name, e := range w.checks {
@@ -371,23 +368,20 @@ func (w *Watchdog) Ready() []health.Result {
 	w.mu.Unlock()
 	if len(bad) > 0 {
 		sort.Strings(bad)
-		out = append(out, health.Result{Name: "checks", State: health.Warn,
-			Detail: fmt.Sprintf("%d of %d invalid: %s", len(bad), total, strings.Join(bad, ", ")),
-			Fix:    "nats req watchdog.checks '' shows each error"})
-	} else {
-		out = append(out, health.Result{Name: "checks", State: health.OK, Detail: fmt.Sprintf("%d loaded", total)})
+		return health.Warn(fmt.Sprintf("%d of %d invalid: %s", len(bad), total, strings.Join(bad, ", ")),
+			"nats req watchdog.checks '' shows each error")
 	}
+	return health.OK(fmt.Sprintf("%d loaded", total))
+}
 
+func (w *Watchdog) checkEvaluation(context.Context) health.Result {
 	last := w.lastEval.Load()
 	switch age := time.Since(time.Unix(0, last)); {
 	case last == 0:
-		out = append(out, health.Result{Name: "evaluation", State: health.Fail, Detail: "not evaluated yet"})
+		return health.Fail("not evaluated yet", "")
 	case age > 3*w.cfg.EvalInterval:
-		out = append(out, health.Result{Name: "evaluation", State: health.Fail,
-			Detail: fmt.Sprintf("last evaluation %s ago", age.Round(time.Second))})
+		return health.Fail(fmt.Sprintf("last evaluation %s ago", age.Round(time.Second)), "")
 	default:
-		out = append(out, health.Result{Name: "evaluation", State: health.OK,
-			Detail: fmt.Sprintf("last evaluation %s ago", age.Round(time.Millisecond))})
+		return health.OK(fmt.Sprintf("last evaluation %s ago", age.Round(time.Millisecond)))
 	}
-	return out
 }

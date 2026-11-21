@@ -227,6 +227,8 @@ The process is configured by environment variables only:
 ```
 stone-age-io/services
   go.mod
+  (internal/natsconn and internal/health moved to stone-age-io/kit in
+   November 2026, as natsx and health)
   internal/natsconn/     connect, creds, reconnect hooks
   internal/health/       /api/ready and /metrics
   watchdog/

@@ -154,6 +154,7 @@ The service unit needs `Restart=always`, so it recovers from a Revoke and from a
 | `CREDS_FILE_MODE` | `0600` | Octal. Use `0640` with a shared group. A mode that gives other users access is refused. |
 | `SYNC_INTERVAL` | `5m` | |
 | `HTTP_ADDR` | `:8080` | Serves `/api/ready` and `/metrics`. |
+| `METRICS_TOKEN` | none | When set, `/metrics` requires it as a Bearer token or a Basic password. `/api/ready` never asks for one. |
 
 ### Files
 

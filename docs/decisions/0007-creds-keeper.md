@@ -91,7 +91,7 @@ Keep the password configured where a service may be stopped for long periods.
 
 **The client must keep retrying after an auth error.** By default nats.go stops reconnecting when the server returns the same auth error twice in a row. That would let a revoked client give up before its replacement arrives. So:
 
-- **Our services:** `internal/natsconn` sets `nats.IgnoreAuthErrorAbort()` and reconnects forever.
+- **Our services:** `natsx.Connect` from [`stone-age-io/kit`](https://github.com/stone-age-io/kit) sets `nats.IgnoreAuthErrorAbort()` and reconnects forever. *(At the time of this decision it was `internal/natsconn`.)*
 - **Third-party programs** may exit instead. Their restart policy brings them back, and they connect once the new file is in place.
 
 ### 5. Health and metrics

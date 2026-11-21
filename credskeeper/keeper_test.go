@@ -20,7 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/stone-age-io/services/internal/health"
+	"github.com/stone-age-io/kit/health"
 )
 
 const (
@@ -143,8 +143,11 @@ func readFile(t *testing.T, path string) string {
 	return string(b)
 }
 
-func check(t *testing.T, results []health.Result, name string) health.Result {
+func check(t *testing.T, k *Keeper, name string) health.Result {
 	t.Helper()
+	var reg health.Registry
+	k.RegisterChecks(&reg)
+	results := reg.Run(context.Background(), "", 0).Checks
 	for _, r := range results {
 		if r.Name == name {
 			return r
@@ -189,7 +192,7 @@ func TestBootstrapWritesCredsAndSession(t *testing.T) {
 	if testutil.ToFloat64(k.m.changes) != 1 {
 		t.Fatal("credential change not counted")
 	}
-	if got := check(t, k.Ready(), "credentials"); got.State != health.OK {
+	if got := check(t, k, "credentials"); got.State != health.StateOK {
 		t.Fatalf("credentials = %+v", got)
 	}
 }
@@ -270,11 +273,10 @@ func TestLapsedSessionWithoutPassword(t *testing.T) {
 	if err := k.Sync(context.Background()); !errors.Is(err, ErrNeedPassword) {
 		t.Fatalf("err = %v, want ErrNeedPassword", err)
 	}
-	r := k.Ready()
-	if got := check(t, r, "platform"); got.State != health.Warn || !strings.Contains(got.Fix, "PLATFORM_PASSWORD") {
+	if got := check(t, k, "platform"); got.State != health.StateWarn || !strings.Contains(got.Fix, "PLATFORM_PASSWORD") {
 		t.Fatalf("platform = %+v", got)
 	}
-	if got := check(t, r, "credentials"); got.State != health.OK {
+	if got := check(t, k, "credentials"); got.State != health.StateOK {
 		t.Fatalf("credentials = %+v", got)
 	}
 	if testutil.ToFloat64(k.m.syncErrors) != 1 {
@@ -313,7 +315,7 @@ func TestPlatformDownIsNotALapsedSession(t *testing.T) {
 	if p.count("password") != 1 {
 		t.Fatalf("the password was tried during an outage: %v", p.calls)
 	}
-	if got := check(t, k.Ready(), "platform"); got.State != health.Warn || got.Fix != "" {
+	if got := check(t, k, "platform"); got.State != health.StateWarn || got.Fix != "" {
 		t.Fatalf("platform = %+v", got)
 	}
 }
@@ -325,11 +327,11 @@ func TestReadyFailsWithoutCredsFile(t *testing.T) {
 	p.set(func(p *fakePlatform) { p.down = true })
 	k := newKeeper(t, srv.URL, t.TempDir(), password)
 
-	if got := check(t, k.Ready(), "credentials"); got.State != health.Fail {
+	if got := check(t, k, "credentials"); got.State != health.StateFail {
 		t.Fatalf("credentials = %+v", got)
 	}
 	_ = k.Sync(context.Background())
-	if got := check(t, k.Ready(), "credentials"); got.State != health.Fail {
+	if got := check(t, k, "credentials"); got.State != health.StateFail {
 		t.Fatalf("credentials = %+v", got)
 	}
 }

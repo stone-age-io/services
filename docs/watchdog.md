@@ -62,6 +62,7 @@ The watchdog is configured by environment variables only.
 | `NATS_URL` | `nats://localhost:4222` | |
 | `NATS_CREDS` | none | **Required.** Path to the account user's creds file. |
 | `HTTP_ADDR` | `:8080` | Serves `/api/ready` and `/metrics`. |
+| `METRICS_TOKEN` | none | When set, `/metrics` requires it as a Bearer token or a Basic password. `/api/ready` never asks for one. |
 | `EVAL_INTERVAL` | `10s` | How often targets are evaluated. |
 | `CHECKS_BUCKET` | `watchdog_checks` | |
 | `STATE_BUCKET` | `watchdog_state` | |

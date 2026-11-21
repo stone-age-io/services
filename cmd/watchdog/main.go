@@ -15,8 +15,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/stone-age-io/services/internal/health"
-	"github.com/stone-age-io/services/internal/natsconn"
+	"github.com/stone-age-io/kit/health"
+	"github.com/stone-age-io/kit/natsx"
+
 	"github.com/stone-age-io/services/watchdog"
 )
 
@@ -50,10 +51,13 @@ func run(log *slog.Logger) error {
 
 	w := watchdog.New(cfg, log, watchdog.NewMetrics(prometheus.DefaultRegisterer))
 
+	var reg health.Registry
+	w.RegisterChecks(&reg)
+
 	// HTTP comes up first, so /api/ready answers "not ready" during startup.
 	srv := &http.Server{
 		Addr:              httpAddr,
-		Handler:           health.Handler(version, time.Now(), w.Ready, prometheus.DefaultGatherer),
+		Handler:           httpHandler(&reg, os.Getenv("METRICS_TOKEN")),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() {
@@ -63,9 +67,12 @@ func run(log *slog.Logger) error {
 		}
 	}()
 
-	nc, err := natsconn.Connect(natsURL, creds, "watchdog", log, natsconn.Hooks{
-		Disconnected: w.Pause,
-		Reconnected:  w.Resume,
+	nc, err := natsx.Connect(natsx.Options{
+		URLs:  []string{natsURL},
+		Creds: creds,
+		Name:  "watchdog",
+		Log:   log,
+		Hooks: natsx.Hooks{Disconnected: w.Pause, Reconnected: w.Resume},
 	})
 	if err != nil {
 		return fmt.Errorf("connect %s: %w", natsURL, err)
@@ -97,6 +104,19 @@ func run(log *slog.Logger) error {
 	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutCtx)
+}
+
+// httpHandler serves the process contract. The checks run on each request:
+// each only reads memory, so a cached prober would save nothing (ADR 0005,
+// As implemented, item 3).
+func httpHandler(reg *health.Registry, metricsToken string) http.Handler {
+	started := time.Now()
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/ready", func(w http.ResponseWriter, r *http.Request) {
+		health.WriteJSON(w, reg.Run(r.Context(), version, time.Since(started)))
+	})
+	mux.Handle("GET /metrics", health.MetricsHandler(prometheus.DefaultGatherer, metricsToken))
+	return mux
 }
 
 func env(key, def string) string {

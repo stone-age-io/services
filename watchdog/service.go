@@ -11,11 +11,23 @@ import (
 
 // AddService registers the watchdog as a NATS micro service. Its endpoints
 // are read-only: KV is the only way to change anything.
-func (w *Watchdog) AddService(version string) (micro.Service, error) {
+//
+// code is this instance's Thing code. It goes into the metadata as "code",
+// the key the console joins a running service to its Thing on (ADR 0008
+// rule 4). The metadata matches what the kit's natsx.RegisterService writes;
+// the watchdog builds its own config because it needs a StatsHandler, which
+// the kit's Service does not take. An empty code registers without one, so
+// the endpoints still work, and the caller warns.
+func (w *Watchdog) AddService(version, code string) (micro.Service, error) {
+	meta := map[string]string{"version": version}
+	if code != "" {
+		meta["code"] = code
+	}
 	svc, err := micro.AddService(w.nc, micro.Config{
 		Name:         "watchdog",
 		Version:      version,
 		Description:  "Reports when targets stop sending messages",
+		Metadata:     meta,
 		StatsHandler: func(*micro.Endpoint) any { return w.stats() },
 	})
 	if err != nil {

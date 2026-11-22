@@ -29,6 +29,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # The script refuses an empty section, so a tag pushed before
+      # `## [Unreleased]` was promoted fails here, before anything is built.
+      # `bash` rather than ./ so a lost mode bit cannot stop a release, as it
+      # did the helpdesk's v0.2.0.
+      - name: Build release notes from CHANGELOG.md
+        run: bash scripts/release-notes.sh "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
+
       - name: Test
         run: go test -race ./...
 
@@ -36,9 +43,23 @@ jobs:
         with:
           # Pinned to the v2 line so a goreleaser major can't arrive mid-release.
           version: '~> v2'
-          args: release --clean
+          args: release --clean --release-notes=${{ runner.temp }}/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # goreleaser exits 0 whether or not it used the notes file, so check the
+      # published body rather than trusting the exit code.
+      - name: Verify the release body came from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          body=$(gh release view "$GITHUB_REF_NAME" --json body --jq .body)
+          if ! grep -qF "## services $GITHUB_REF_NAME" <<<"$body"; then
+            echo "::error::release body is not the one scripts/release-notes.sh built"
+            head -20 <<<"$body"
+            exit 1
+          fi
+          echo "release body OK ($(wc -l <<<"$body") lines)"
 
   images:
     needs: binaries

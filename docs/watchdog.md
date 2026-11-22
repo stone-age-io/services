@@ -61,6 +61,7 @@ The watchdog is configured by environment variables only.
 |---|---|---|
 | `NATS_URL` | `nats://localhost:4222` | |
 | `NATS_CREDS` | none | **Required.** Path to the account user's creds file. |
+| `THING_CODE` | none | This instance's Thing code. It goes into the discovery metadata as `code`, which is how the console links the running process to its Thing (ADR 0008). Unset, the watchdog still runs and logs a warning at startup. |
 | `HTTP_ADDR` | `:8080` | Serves `/api/ready` and `/metrics`. |
 | `METRICS_TOKEN` | none | When set, `/metrics` requires it as a Bearer token or a Basic password. `/api/ready` never asks for one. |
 | `EVAL_INTERVAL` | `10s` | How often targets are evaluated. |

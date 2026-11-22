@@ -236,11 +236,14 @@ func TestService(t *testing.T) {
 	e.putCheck("gw", gwCheck)
 	e.putCheck("bad", `{"subject":"a.b"}`)
 	w := e.start()
-	svc, err := w.AddService("0.1.0")
+	svc, err := w.AddService("0.1.0", "WD-0001")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer svc.Stop()
+	if got := svc.Info().Metadata["code"]; got != "WD-0001" {
+		t.Fatalf("discovery metadata code = %q, want WD-0001 (ADR 0008 rule 4)", got)
+	}
 	e.waitState("gw.gw-02", Down)
 
 	req := func(subject, body string) string {

@@ -69,6 +69,13 @@ checksum:
   name_template: 'checksums.txt'
   algorithm: sha256
 
+# The release body is NOT built here: scripts/release-notes.sh assembles it
+# from CHANGELOG.md and the workflow passes it with --release-notes.
+#
+# DO NOT set `disable: true` here. Reading the --release-notes file is a step
+# inside the changelog pipe, so disabling the pipe publishes an empty body.
+# The platform shipped a release that way. These settings are only the
+# fallback for someone running goreleaser without the flag.
 changelog:
   sort: asc
   filters:
@@ -82,11 +89,5 @@ release:
   github:
     owner: stone-age-io
     name: services
-  header: |
-    ## services {{ .Tag }}
-
-    Small, account-scoped NATS services for the Stone-Age.io platform. Each
-    service ships as a Linux binary archive below and as a container image:
-
-    - `ghcr.io/stone-age-io/watchdog:{{ .Tag }}`
-    - `ghcr.io/stone-age-io/creds-keeper:{{ .Tag }}`
+  # No header or footer: the whole body, install note included, comes from
+  # scripts/release-notes.sh, so there is one definition of it.

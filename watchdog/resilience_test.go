@@ -168,7 +168,7 @@ func TestLeastPrivilegePermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(w.Stop)
-	svc, err := w.AddService("0.1.0")
+	svc, err := w.AddService("0.1.0", "")
 	if err != nil {
 		t.Fatal(err)
 	}

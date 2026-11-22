@@ -35,6 +35,7 @@ func main() {
 func run(log *slog.Logger) error {
 	natsURL := env("NATS_URL", "nats://localhost:4222")
 	creds := os.Getenv("NATS_CREDS")
+	thingCode := os.Getenv("THING_CODE")
 	httpAddr := env("HTTP_ADDR", ":8080")
 	interval, err := time.ParseDuration(env("EVAL_INTERVAL", "10s"))
 	if err != nil || interval <= 0 {
@@ -85,13 +86,16 @@ func run(log *slog.Logger) error {
 		nc.Close()
 		return err
 	}
-	svc, err := w.AddService(version)
+	if thingCode == "" {
+		log.Warn("THING_CODE is not set: the discovery entry carries no Thing code, so the console cannot link this process to its Thing")
+	}
+	svc, err := w.AddService(version, thingCode)
 	if err != nil {
 		w.Stop()
 		nc.Close()
 		return fmt.Errorf("micro service: %w", err)
 	}
-	log.Info("running", "version", version, "http", httpAddr, "eval_interval", interval)
+	log.Info("running", "version", version, "thing_code", thingCode, "http", httpAddr, "eval_interval", interval)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

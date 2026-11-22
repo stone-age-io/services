@@ -5,7 +5,7 @@ Small, account-scoped NATS services for the [Stone-Age.io](https://stone-age.io)
 | Service | What it does |
 |---|---|
 | [Watchdog](docs/watchdog.md) | Reports when targets stop sending messages. |
-| [creds-keeper](docs/creds-keeper.md) | Keeps a service's creds file current from the platform, so Regenerate and Revoke reach it. |
+| [creds-keeper](docs/creds-keeper.md) | Keeps a creds file current from the platform for a program that is not ours, such as Telegraf or rule-router, so Regenerate and Revoke reach it. |
 
 ---
 
@@ -13,13 +13,13 @@ Small, account-scoped NATS services for the [Stone-Age.io](https://stone-age.io)
 
 creds-keeper is the one exception to this list. It talks only HTTPS to the platform, with a Thing's login, and never NATS ([ADR 0007](docs/decisions/0007-creds-keeper.md) §7). It shares the health contract, the configuration rule and the image.
 
-- **Account-scoped.** It connects with one account user's **creds file** and never needs a platform credential.
+- **Account-scoped.** It connects with one account user's **creds file**. Given a platform URL, it signs in as its own Thing and keeps that file current itself, with the kit's `credskeeper` ([ADR 0009](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0009-thing-credentials-in-kit.md)).
 - **Environment variables only.** There are no config files.
 - **The platform's health contract.** `GET /api/ready` returns `200` or `503` with a JSON report, and `GET /metrics` serves Prometheus metrics. `/api/ready` never needs a login, and `/metrics` asks for a token only when `METRICS_TOKEN` is set.
 - **A NATS micro service.** `nats micro ls` finds it, and `$SRV.PING`, `$SRV.INFO` and `$SRV.STATS` work.
 - **One container image** per service, built from the shared `Dockerfile`.
 
-Shared code comes from [`stone-age-io/kit`](https://github.com/stone-age-io/kit): `natsx` (connect, creds, reconnect hooks) and `health` (`/api/ready` and `/metrics`). A service never keeps its own copy of either.
+Shared code comes from [`stone-age-io/kit`](https://github.com/stone-age-io/kit): `natsx` (connect, creds, reconnect hooks), `health` (`/api/ready` and `/metrics`) and `credskeeper` (the creds file from the platform). A service never keeps its own copy of any of them.
 
 ## What belongs here
 
@@ -30,7 +30,7 @@ Simple and easy to maintain beats clever. A service belongs here only if:
 3. it's useful to any tenant, not one project;
 4. it runs inside a tenant's account with a user creds file.
 
-creds-keeper is admitted on different grounds: it is what lets the services above get their creds file from the platform.
+creds-keeper is admitted on different grounds: it lets a program that cannot link the kit, such as Telegraf, rule-router or eKuiper, get its creds file from the platform. Our own services run the same package in their own process.
 
 ## Onboarding an organization
 
@@ -42,7 +42,7 @@ creds-keeper needs nothing from it: it never connects to NATS.
 
 - [ADR 0005: A Watchdog Service for Message Absence](docs/decisions/0005-watchdog-service.md)
 - [ADR 0006: History Services for Metrics and Logs](docs/decisions/0006-history-services.md) (deferred, nothing built)
-- [ADR 0007: creds-keeper, Platform-Managed Credentials for Account Services](docs/decisions/0007-creds-keeper.md)
+- [ADR 0007: creds-keeper, Platform-Managed Credentials for Account Services](docs/decisions/0007-creds-keeper.md) (amended by [ADR 0009](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0009-thing-credentials-in-kit.md): our own programs run the keeper in process)
 
 The platform's own decisions (0001 to 0004) are in [platform-docs](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions.md). The numbers are shared, so a new one here takes the next free number across both.
 

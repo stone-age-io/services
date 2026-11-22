@@ -23,7 +23,7 @@ The design and the alternatives it rejected are in [ADR 0005](decisions/0005-wat
 3. **Every `EVAL_INTERVAL`** (10s by default) it evaluates every target. A target with no message for longer than its check's `timeout` goes `down`. A message for a `down` target brings it back `up`.
 4. **State changes** are written to the `watchdog_state` KV bucket. Nothing is written while a target's state stays the same.
 
-There is one instance per organization account. It connects with that account's user creds file and needs no platform credential.
+There is one instance per organization account. It connects with that account's user creds file. With `PLATFORM_URL` set, it signs in to the platform as its own Thing and keeps that file current itself, so Regenerate, Revoke and Deactivate in the console reach it ([Keep its creds file current](#keep-its-creds-file-current)).
 
 ---
 
@@ -67,6 +67,8 @@ The watchdog is configured by environment variables only.
 | `EVAL_INTERVAL` | `10s` | How often targets are evaluated. |
 | `CHECKS_BUCKET` | `watchdog_checks` | |
 | `STATE_BUCKET` | `watchdog_state` | |
+| `PLATFORM_URL` | none | When set, the watchdog keeps `NATS_CREDS` current from the platform. See [Keep its creds file current](#keep-its-creds-file-current). |
+| `PLATFORM_IDENTITY`, `PLATFORM_PASSWORD`, `PLATFORM_ALLOW_INSECURE`, `SESSION_FILE`, `SYNC_INTERVAL` | | As in [creds-keeper's configuration](creds-keeper.md#configuration). |
 
 The watchdog creates a missing bucket with one replica and never modifies an existing one. On a clustered JetStream, create the buckets yourself first with the replica count you want:
 
@@ -76,6 +78,30 @@ nats kv add watchdog_state --replicas 3
 ```
 
 You can also raise the replica count later with `nats kv edit`.
+
+### Keep its creds file current
+
+Set `PLATFORM_URL` and the watchdog runs the kit's `credskeeper` in its own process. It is the same lifecycle as the [creds-keeper](creds-keeper.md) binary, without a second container:
+
+```bash
+docker run -d --name watchdog \
+  -v watchdog-creds:/creds \
+  -e NATS_URL=nats://hub:4222 \
+  -e NATS_CREDS=/creds/user.creds \
+  -e THING_CODE=WD-7KQ-2MX \
+  -e PLATFORM_URL=https://platform.example.com \
+  -e PLATFORM_IDENTITY=watchdog-01@things.example.com \
+  -e PLATFORM_PASSWORD=...   \
+  -p 8080:8080 \
+  ghcr.io/stone-age-io/watchdog:latest
+```
+
+- **The volume is writable and persistent.** The watchdog writes the creds file and the session file beside it. Remove `PLATFORM_PASSWORD` after the first start: the session file is enough, as [creds-keeper §4](creds-keeper.md#4-remove-the-password-after-the-first-start) describes.
+- **A first start waits for its first credential.** The watchdog does not connect to NATS until the first sync has written the creds file. A restart with a file already on the volume connects at once, even when the platform is down.
+- **`/api/ready` gains two checks,** `credentials` and `platform`, and `/metrics` gains the `creds_keeper_*` metrics. Both are described in [creds-keeper §5](creds-keeper.md#5-health-and-metrics).
+- **If the host is compromised, deactivate the Thing. Do not only Revoke.** The process holds the Thing's platform session, and a Revoke hands the new credential to whoever holds it. See [creds-keeper §7](creds-keeper.md#7-a-compromised-host).
+
+The Thing, its type and its role are set up as [creds-keeper §2](creds-keeper.md#2-set-up-the-platform) describes.
 
 ### Permissions
 

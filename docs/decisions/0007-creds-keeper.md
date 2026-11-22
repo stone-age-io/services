@@ -2,6 +2,7 @@
 
 **Status:** Accepted — implemented in [`stone-age-io/services`](https://github.com/stone-age-io/services), with small deviations. See [As implemented](#as-implemented).
 **Date:** 2026-11-07 (implemented 2026-11-06)
+**Amended by:** [ADR 0009](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0009-thing-credentials-in-kit.md), 2026-11-22. Our own programs run the keeper's package, now `kit/credskeeper`, in their own process; §10 and the alternatives "Build a platform client into each service" and "A shared Go module" are superseded for them. The binary stays for programs that are not ours, and the lifecycle below is unchanged. The Agent keeps its own implementation.
 
 > This ADR decides how the processes that run inside an organization's account get their NATS credentials from the platform, instead of by copying `.creds` files around. That covers our own services, such as the [Watchdog](./0005-watchdog-service.md), and the third-party ones beside them (Telegraf, rule-router, eKuiper, Benthos). It adds a second program to [`stone-age-io/services`](https://github.com/stone-age-io/services).
 

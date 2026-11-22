@@ -15,9 +15,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/stone-age-io/kit/credskeeper"
 	"github.com/stone-age-io/kit/health"
-
-	"github.com/stone-age-io/services/credskeeper"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -41,7 +40,10 @@ func run(log *slog.Logger) error {
 		httpAddr = ":8080"
 	}
 
-	k := credskeeper.New(cfg, log, credskeeper.NewMetrics(prometheus.DefaultRegisterer))
+	k, err := credskeeper.New(cfg, log, credskeeper.NewMetrics(prometheus.DefaultRegisterer))
+	if err != nil {
+		return err
+	}
 
 	var reg health.Registry
 	k.RegisterChecks(&reg)

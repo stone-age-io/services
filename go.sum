@@ -34,8 +34,8 @@ github.com/prometheus/common v0.72.0 h1:tAYsE+sPJxIncDAobm4H5aQjmox9ZxEIIqPbiffa
 github.com/prometheus/common v0.72.0/go.mod h1:77NWqAQ2tXT7BIK40qjJdw5Acrsrg1TlHAnsQi3i6mk=
 github.com/prometheus/procfs v0.22.0 h1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0oics=
 github.com/prometheus/procfs v0.22.0/go.mod h1:CvmFr/GVhIjIvWJZW3tgkODBQMRIf0EyWMQLHCHab58=
-github.com/stone-age-io/kit v0.1.0 h1:du80AKqil3doKpIYnqcDy1WAJNrzhro0HLo+rxNWsIY=
-github.com/stone-age-io/kit v0.1.0/go.mod h1:8aM5s7OIEz5Lr/sHU9tqH4p/vEjWSuS80XLd0n1am9M=
+github.com/stone-age-io/kit v0.2.0 h1:cwPmWvszctRa7AQdy6KdEkrg9MRq15m64H2kDuh8ubw=
+github.com/stone-age-io/kit v0.2.0/go.mod h1:qh2Z25uUrEjznDYH0/Pxao+KIA/jlh7deRgEYrvaaik=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
 github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=

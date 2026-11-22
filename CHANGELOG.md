@@ -20,6 +20,32 @@ environment variables, the KV bucket formats and the micro endpoints in
 
 ## [Unreleased]
 
+The keeper's package moved to the kit, and the watchdog runs it in its own
+process ([ADR 0009](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0009-thing-credentials-in-kit.md)).
+
+### watchdog
+
+- **It can keep its own creds file current.** Set `PLATFORM_URL`,
+  `PLATFORM_IDENTITY` and, for the first start, `PLATFORM_PASSWORD`, and the
+  watchdog signs in as its Thing and writes `NATS_CREDS` itself. A first start
+  waits for the first credential before it connects. `/api/ready` gains the
+  `credentials` and `platform` checks, and `/metrics` the `creds_keeper_*`
+  metrics. Unset, nothing changes. The creds-keeper sidecar still works, but
+  the watchdog no longer needs it.
+
+### creds-keeper
+
+- **It serves a NATS identity made with a device-held key.** The keeper makes
+  the key pair, keeps the seed beside the creds file as `.nk`, enrolls the
+  public key, and builds the creds file from the platform's JWT. A key this
+  host did not make stops it, and the `platform` check says to revoke it.
+- **Its package is now `github.com/stone-age-io/kit/credskeeper`.** The
+  `services/credskeeper` package is gone. The binary's configuration, image
+  and metrics do not change.
+- **The `platform` check's `fix` text for a lapsed session** says "the
+  platform password" rather than `PLATFORM_PASSWORD`, since programs that run
+  the package in process name it in their own configuration.
+
 ## [0.4.0] — 2026-11-21
 
 ### watchdog

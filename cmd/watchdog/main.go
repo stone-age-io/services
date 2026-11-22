@@ -15,6 +15,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/stone-age-io/kit/credskeeper"
 	"github.com/stone-age-io/kit/health"
 	"github.com/stone-age-io/kit/natsx"
 
@@ -55,6 +56,25 @@ func run(log *slog.Logger) error {
 	var reg health.Registry
 	w.RegisterChecks(&reg)
 
+	// With PLATFORM_URL set, the watchdog keeps its own Thing's creds file
+	// current (ADR 0009 §2). Without it, it connects with the creds file it
+	// was given, as before.
+	var keeper *credskeeper.Keeper
+	if os.Getenv("PLATFORM_URL") != "" {
+		kcfg, err := credskeeper.ConfigFromEnv(os.Getenv)
+		if err != nil {
+			return err
+		}
+		keeper, err = credskeeper.New(kcfg, log.With("component", "credskeeper"), credskeeper.NewMetrics(prometheus.DefaultRegisterer))
+		if err != nil {
+			return err
+		}
+		keeper.RegisterChecks(&reg)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	// HTTP comes up first, so /api/ready answers "not ready" during startup.
 	srv := &http.Server{
 		Addr:              httpAddr,
@@ -67,6 +87,15 @@ func run(log *slog.Logger) error {
 			os.Exit(1)
 		}
 	}()
+
+	if keeper != nil {
+		go keeper.Run(ctx)
+		// nats.go reads the creds file before it dials, so a first start
+		// waits for the first sync rather than fail the connect.
+		if err := keeper.WaitForCreds(ctx); err != nil {
+			return err
+		}
+	}
 
 	nc, err := natsx.Connect(natsx.Options{
 		URLs:  []string{natsURL},
@@ -97,9 +126,7 @@ func run(log *slog.Logger) error {
 	}
 	log.Info("running", "version", version, "thing_code", thingCode, "http", httpAddr, "eval_interval", interval)
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
+	<-ctx.Done()
 	log.Info("shutting down")
 
 	_ = svc.Stop()

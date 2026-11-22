@@ -20,6 +20,8 @@ environment variables, the KV bucket formats and the micro endpoints in
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-22
+
 The keeper's package moved to the kit, and the watchdog runs it in its own
 process ([ADR 0009](https://github.com/stone-age-io/platform-docs/blob/main/docs/decisions/0009-thing-credentials-in-kit.md)).
 

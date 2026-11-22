@@ -1,0 +1,4 @@
+code: watchdog
+name: Watchdog
+description: "watchdog: checks heartbeats and other subjects against the expectations in its KV bucket, and answers status requests as a NATS micro service."
+subject_prefix: app.watchdog.{thing}

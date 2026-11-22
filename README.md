@@ -32,6 +32,12 @@ Simple and easy to maintain beats clever. A service belongs here only if:
 
 creds-keeper is admitted on different grounds: it is what lets the services above get their creds file from the platform.
 
+## Onboarding an organization
+
+[`contract/`](contract/) holds watchdog's Thing Type and NATS role. As an owner
+or admin of the organization, run `stone apply --template contract/`.
+creds-keeper needs nothing from it: it never connects to NATS.
+
 ## Decisions
 
 - [ADR 0005: A Watchdog Service for Message Absence](docs/decisions/0005-watchdog-service.md)

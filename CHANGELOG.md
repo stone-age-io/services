@@ -20,6 +20,8 @@ environment variables, the KV bucket formats and the micro endpoints in
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-11-21
+
 ### watchdog
 
 - **Its discovery entry carries its Thing code.** Set `THING_CODE` to the code
